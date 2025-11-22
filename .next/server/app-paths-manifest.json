@@ -1,18 +1,18 @@
 {
   "/api/admin/dashboard/route": "app/api/admin/dashboard/route.js",
-  "/api/admin/users/[id]/role/route": "app/api/admin/users/[id]/role/route.js",
   "/api/admin/users/[id]/admin-status/route": "app/api/admin/users/[id]/admin-status/route.js",
-  "/api/admin/users/[id]/route": "app/api/admin/users/[id]/route.js",
-  "/api/admin/users/route": "app/api/admin/users/route.js",
-  "/api/analytics/stats/route": "app/api/analytics/stats/route.js",
+  "/api/admin/users/[id]/role/route": "app/api/admin/users/[id]/role/route.js",
   "/api/analytics/track/route": "app/api/analytics/track/route.js",
+  "/api/admin/users/[id]/route": "app/api/admin/users/[id]/route.js",
+  "/api/analytics/stats/route": "app/api/analytics/stats/route.js",
+  "/api/admin/users/route": "app/api/admin/users/route.js",
   "/api/announcements/[id]/route": "app/api/announcements/[id]/route.js",
   "/api/announcements/route": "app/api/announcements/route.js",
-  "/api/tv/route": "app/api/tv/route.js",
-  "/api/debug-email/route": "app/api/debug-email/route.js",
   "/api/profile/route": "app/api/profile/route.js",
   "/api/test-email/route": "app/api/test-email/route.js",
+  "/api/debug-email/route": "app/api/debug-email/route.js",
+  "/api/tv/route": "app/api/tv/route.js",
   "/_not-found/page": "app/_not-found/page.js",
-  "/all-announcements/page": "app/all-announcements/page.js",
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/all-announcements/page": "app/all-announcements/page.js"
 }
