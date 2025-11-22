@@ -1,9 +1,9 @@
 {
   "node": {
-    "7f40dc84c0f4c459faffcf736ad0efc0dff18cd897": {
+    "7fe27a26714308df580f4f0f9e16cbefc829bdb9e6": {
       "workers": {
         "app/page": {
-          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22E%3A%5C%5CProject%5C%5Csst_announcement%5C%5Cnode_modules%5C%5C%40clerk%5C%5Cnextjs%5C%5Cdist%5C%5Cesm%5C%5Capp-router%5C%5Cserver-actions.js%22%2C%5B%5B%227f40dc84c0f4c459faffcf736ad0efc0dff18cd897%22%2C%22invalidateCacheAction%22%5D%5D%5D%5D&__client_imported__=true!",
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22E%3A%5C%5CProject%5C%5Csst_announcement%5C%5Cnode_modules%5C%5C%40clerk%5C%5Cnextjs%5C%5Cdist%5C%5Cesm%5C%5Capp-router%5C%5Cserver-actions.js%22%2C%5B%5B%227fe27a26714308df580f4f0f9e16cbefc829bdb9e6%22%2C%22invalidateCacheAction%22%5D%5D%5D%5D&__client_imported__=true!",
           "async": false
         }
       },
@@ -13,5 +13,5 @@
     }
   },
   "edge": {},
-  "encryptionKey": "jJFZn7gU8uKzq0s3tG308MOAISQ+wvrHCWp+GDfWwMo="
+  "encryptionKey": "m1t9rq/ja1czXDZgKd/wGkyhm6pzAe+2h3l9GGetjPQ="
 }

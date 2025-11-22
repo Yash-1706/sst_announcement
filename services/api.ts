@@ -9,7 +9,6 @@ import type {
   AdminDashboardData,
   AdminLimits,
   AdminConfigInfo,
-  AnnouncementComment,
 } from '@/types'
 
 const API_BASE_URL = getConfig().backendUrl
@@ -190,23 +189,12 @@ class ApiService {
     return this.request<User>('/api/profile')
   }
 
-  // Review and comments
+  // Review announcements
   async reviewAnnouncement(id: number, action: 'accept' | 'reject' | 'send_back', scheduled_at?: string): Promise<ApiResponse<Announcement>> {
     return this.request<Announcement>(`/api/announcements/${id}/review`, {
       method: 'POST',
       body: JSON.stringify({ action, scheduled_at }),
     })
-  }
-
-  async addAnnouncementComment(id: number, content: string): Promise<ApiResponse<AnnouncementComment>> {
-    return this.request<AnnouncementComment>(`/api/announcements/${id}/comments`, {
-      method: 'POST',
-      body: JSON.stringify({ content }),
-    })
-  }
-
-  async getAnnouncementComments(id: number): Promise<ApiResponse<AnnouncementComment[]>> {
-    return this.request<AnnouncementComment[]>(`/api/announcements/${id}/comments`)
   }
 
   // Debug (for development)
@@ -226,5 +214,4 @@ export type {
   ApiResponse,
   AnalyticsStats,
   AdminDashboardData,
-  AnnouncementComment,
 } from '@/types'

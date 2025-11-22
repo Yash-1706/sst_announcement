@@ -14,6 +14,7 @@ const DEFAULT_FORM_STATE: CreateAnnouncementData = {
   is_active: true,
   status: 'active',
   send_email: false,
+  send_tv: false,
   priority_until: null,
   is_emergency: false,
 };
@@ -88,6 +89,7 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
         submission.expiry_date = priorityExpiresAt.toISOString();
         submission.status = 'urgent';
         submission.send_email = true;
+        submission.send_tv = true;
         submission.is_active = true;
       } else {
         // Emergency mode (main version)
@@ -477,6 +479,54 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
                       {formData.send_email && (
                         <div className="absolute inset-0 flex items-center justify-center">
                           <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              {/* TV Notification Toggle */}
+              <div className="flex items-center justify-between group">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg transition-colors duration-200 ${
+                    formData.send_tv 
+                      ? 'bg-purple-500/20 text-purple-400' 
+                      : 'bg-gray-800/50 text-gray-500'
+                  }`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-gray-200 block">
+                      Send to TV Display
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {formData.send_tv ? 'Will appear on TV screens' : 'Not sent to TV'}
+                    </span>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer group-hover:scale-105 transition-transform duration-200">
+                  <input
+                    type="checkbox"
+                    checked={formData.send_tv ?? false}
+                    onChange={(e) => setFormData({ ...formData, send_tv: e.target.checked })}
+                    className="sr-only"
+                  />
+                  <div className={`relative w-14 h-7 rounded-full transition-all duration-300 ease-in-out ${
+                    formData.send_tv 
+                      ? 'bg-gradient-to-r from-purple-500 to-purple-600 shadow-lg shadow-purple-500/50' 
+                      : 'bg-gray-700 border border-gray-600'
+                  }`}>
+                    <div className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ease-in-out ${
+                      formData.send_tv ? 'translate-x-7' : 'translate-x-0'
+                    }`}>
+                      {formData.send_tv && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <svg className="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         </div>

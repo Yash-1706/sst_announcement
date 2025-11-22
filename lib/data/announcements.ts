@@ -22,6 +22,7 @@ export function mapAnnouncement(record: AnnouncementRecord) {
     clicks_count: record.clicksCount,
     send_email: record.sendEmail,
     email_sent: record.emailSent,
+    send_tv: record.sendTV,
     priority_until: record.priorityUntil,
   };
 }
@@ -49,4 +50,16 @@ export async function fetchAnnouncementById(id: number) {
   const db = getDb();
   const rows = await db.select().from(announcements).where(eq(announcements.id, id)).limit(1);
   return rows.length > 0 ? mapAnnouncement(rows[0]) : null;
+}
+
+export async function getTvData() {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(announcements)
+    .where(eq(announcements.sendTV, true))
+    .orderBy(desc(announcements.createdAt))
+    .limit(5);
+
+  return rows.map(mapAnnouncement);
 }

@@ -24,7 +24,8 @@ const QuickEmergencyButton: React.FC<QuickEmergencyButtonProps> = ({ onSuccess }
         is_emergency: true,
         is_active: true,
         status: 'active',
-        send_email: true
+        send_email: true,
+        send_tv: true
       }
       
       const response = await apiService.createAnnouncement(emergencyData)

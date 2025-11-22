@@ -16,6 +16,7 @@ export interface Announcement {
   clicks_count?: number
   send_email?: boolean
   email_sent?: boolean
+  send_tv?: boolean
   priority_until?: string | null
   is_emergency?: boolean
   emergency_expires_at?: string | null
@@ -43,18 +44,10 @@ export interface CreateAnnouncementData {
   is_active?: boolean
   status?: string
   send_email?: boolean
+  send_tv?: boolean
   priority_until?: string | null
   is_emergency?: boolean
   emergency_expires_at?: string // ISO string for emergency expiration time
-}
-
-export interface AnnouncementComment {
-  id?: number
-  announcement_id: number
-  author_id: number
-  target_admin_id: number
-  content: string
-  created_at?: string
 }
 
 export interface ReviewAction {

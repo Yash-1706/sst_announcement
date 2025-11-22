@@ -22,6 +22,7 @@ const EmergencyAlertForm: React.FC<EmergencyAlertFormProps> = ({ onClose, onSucc
     is_active: true,
     status: 'active',
     send_email: true,
+    send_tv: true,
     is_emergency: true,
     emergency_expires_at: ''
   })
@@ -158,6 +159,19 @@ const EmergencyAlertForm: React.FC<EmergencyAlertFormProps> = ({ onClose, onSucc
                 />
                 <label htmlFor="send_email_emergency" className="text-sm font-medium text-red-200">
                   📧 Send immediate email notifications to all users
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="send_tv_emergency"
+                  checked={formData.send_tv ?? false}
+                  onChange={(e) => handleInputChange('send_tv', e.target.checked)}
+                  className="w-4 h-4 text-red-600 bg-gray-800 border-red-500 rounded focus:ring-red-500 focus:ring-2"
+                />
+                <label htmlFor="send_tv_emergency" className="text-sm font-medium text-red-200">
+                  📺 Send to TV display screens
                 </label>
               </div>
 

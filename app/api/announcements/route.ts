@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
       is_active = true,
       status = 'active',
       send_email = false,
+      send_tv = false,
     } = body;
 
     const db = getDb();
@@ -97,6 +98,7 @@ export async function POST(request: NextRequest) {
       status: finalStatus,
       sendEmail: send_email,
       emailSent: false,
+      sendTV: send_tv,
     };
     if (prioritySupported) {
       announcementValues.priorityUntil = priorityUntilDate;
@@ -305,8 +307,9 @@ async function insertAnnouncementWithFallback(
           is_active,
           status,
           send_email,
-          email_sent
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          email_sent,
+          send_tv
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING *
       `,
       values: [
@@ -321,6 +324,7 @@ async function insertAnnouncementWithFallback(
         insertStatus,
         values.sendEmail ?? false,
         values.emailSent ?? false,
+        values.sendTV ?? false,
       ],
     });
     
@@ -346,8 +350,9 @@ async function insertAnnouncementWithFallback(
             is_active,
             status,
             send_email,
-            email_sent
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            email_sent,
+            send_tv
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           RETURNING *
         `,
         values: [
@@ -362,6 +367,7 @@ async function insertAnnouncementWithFallback(
           'active',
           values.sendEmail ?? false,
           values.emailSent ?? false,
+          values.sendTV ?? false,
         ],
       });
       
@@ -412,6 +418,7 @@ function mapRowToAnnouncement(row: any): typeof announcements.$inferSelect {
     clicksCount: row.clicks_count ?? 0,
     sendEmail: row.send_email ?? false,
     emailSent: row.email_sent ?? false,
+    sendTV: row.send_tv ?? false,
     priorityUntil: null, // Not supported in manual insert fallback
   } as typeof announcements.$inferSelect;
 }
