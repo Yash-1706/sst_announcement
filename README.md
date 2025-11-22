@@ -142,9 +142,7 @@ sst_announcement/
 │
 ├── middleware.ts                 # Next.js middleware (CORS)
 ├── next.config.js                # Next.js configuration
-├── vercel.json                   # Vercel deployment config
-└── scripts/                      # Utility scripts
-    └── remove-comments-table.js  # Database migration script
+└── vercel.json                   # Vercel deployment config
 ```
 
 ## 🚀 Quick Start
@@ -194,9 +192,9 @@ sst_announcement/
 4. **Set up the database**
    
    The database schema is defined in `lib/schema.ts` using Drizzle ORM. You'll need to:
-   - Create the database tables manually, or
-   - Use Drizzle migrations (if configured)
+   - Create the database tables manually based on the schema
    - Ensure all required tables exist: `users`, `announcements`, `announcement_engagements`
+   - Add any missing columns if you encounter schema errors (see Database Schema Updates section)
 
 5. **Start the development server**
    ```bash
@@ -432,11 +430,13 @@ CORS is handled in two places:
    - Check for missing dependencies: `npm install`
 
 6. **"send_tv column does not exist" Error**
-   - Run database migration to add the column:
+   - The `send_tv` column needs to be added to the `announcements` table
+   - Run this SQL command in your PostgreSQL database:
      ```sql
      ALTER TABLE announcements 
      ADD COLUMN IF NOT EXISTS send_tv BOOLEAN DEFAULT false NOT NULL;
      ```
+   - Or connect to your database and execute the SQL directly
 
 7. **Rate Limiting Issues**
    - Rate limits are configured in `lib/middleware/rateLimit.ts`
@@ -448,18 +448,34 @@ CORS is handled in two places:
    - Ensure all types are properly imported
    - Check for missing type definitions
 
-## 📝 Database Migrations
+## 📝 Database Schema Updates
 
-### Removing Comments Table
-If you need to remove the `announcement_comments` table (which is no longer used):
-```bash
-node scripts/remove-comments-table.js
+### Adding Missing Columns
+If you encounter errors about missing columns (e.g., `send_tv`), you can add them manually using SQL:
+
+**Add `send_tv` column:**
+```sql
+ALTER TABLE announcements 
+ADD COLUMN IF NOT EXISTS send_tv BOOLEAN DEFAULT false NOT NULL;
 ```
 
-Or manually:
+**Add `priority_until` column (if needed):**
+```sql
+ALTER TABLE announcements 
+ADD COLUMN IF NOT EXISTS priority_until TIMESTAMPTZ;
+```
+
+### Removing Unused Tables
+If you need to remove unused tables, you can do so manually:
 ```sql
 DROP TABLE IF EXISTS announcement_comments CASCADE;
 ```
+
+### Manual Schema Updates
+The database schema is defined in `lib/schema.ts` using Drizzle ORM. When adding new columns or tables:
+1. Update the schema in `lib/schema.ts`
+2. Run the corresponding SQL ALTER TABLE commands in your database
+3. Ensure the schema matches your database structure
 
 ## 📝 License
 
