@@ -28,7 +28,7 @@ interface CreateAnnouncementModalProps {
   loading?: boolean;
   initialData?: Partial<CreateAnnouncementData>;
   variant?: 'standard' | 'emergency';
-  emergencyMode?: boolean; // If true, pre-fills is_emergency and shows emergency-specific UI
+  emergencyMode?: boolean; 
 }
 
 const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
@@ -46,15 +46,37 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
   const [formData, setFormData] = useState<CreateAnnouncementData>(DEFAULT_FORM_STATE);
   const [priorityDurationHours, setPriorityDurationHours] = useState<number>(2);
   const [emergencyDurationHours, setEmergencyDurationHours] = useState<number>(4);
+  const [minScheduledDate, setMinScheduledDate] = useState<string>('');
 
   const isEmergencyVariant = variant === 'emergency' || emergencyMode;
 
+  const formatToLocalDateTime = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   useEffect(() => {
     if (isOpen) {
+      const dayAfterTomorrow = new Date();
+      dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+      dayAfterTomorrow.setHours(0, 0, 0, 0);
+      
+      // Format for datetime-local input (YYYY-MM-DDTHH:mm) in local time
+      const dayAfterTomorrowFormatted = formatToLocalDateTime(dayAfterTomorrow);
+      
+      // Set minimum date (day after tomorrow) for validation
+      setMinScheduledDate(dayAfterTomorrowFormatted);
+      
       setFormData({
         ...DEFAULT_FORM_STATE,
         ...(initialData || {}),
         is_emergency: isEmergencyVariant,
+        // Set scheduled_at to day after tomorrow at midnight if not in emergency mode and not already set
+        scheduled_at: isEmergencyVariant ? '' : (initialData?.scheduled_at || dayAfterTomorrowFormatted),
       });
       setPriorityDurationHours(2);
       setEmergencyDurationHours(4);
@@ -348,7 +370,29 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
                     <input
                       type="datetime-local"
                       value={formData.scheduled_at || ''}
-                      onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value) {
+                          // Parse the datetime-local value and ensure time is always set to midnight (00:00)
+                          const [datePart] = value.split('T');
+                          const formattedValue = `${datePart}T00:00`;
+                          setFormData({ ...formData, scheduled_at: formattedValue });
+                        } else {
+                          setFormData({ ...formData, scheduled_at: '' });
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // Ensure time is midnight when user finishes editing
+                        const value = e.target.value;
+                        if (value) {
+                          const [datePart] = value.split('T');
+                          const formattedValue = `${datePart}T00:00`;
+                          if (formattedValue !== value) {
+                            setFormData({ ...formData, scheduled_at: formattedValue });
+                          }
+                        }
+                      }}
+                      min={minScheduledDate}
                       className="w-full px-4 py-2.5 bg-gray-800/80 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all duration-200 hover:border-gray-600"
                     />
                   </div>
