@@ -25,6 +25,13 @@ const DEFAULT_FORM_STATE: CreateAnnouncementData = {
 
 const PRIORITY_DURATION_OPTIONS = [1, 2, 4, 6, 12, 24];
 
+const convertLocalInputToUTC = (value?: string | null) => {
+  if (!value) return value;
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return value;
+  return date.toISOString();
+};
+
 interface CreateAnnouncementModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -153,6 +160,15 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
         submission.priority_level = maxPriorityNum; 
       }
     }
+
+    submission = {
+      ...submission,
+      scheduled_at: convertLocalInputToUTC(submission.scheduled_at) ?? '',
+      expiry_date: convertLocalInputToUTC(submission.expiry_date) ?? '',
+      reminder_time: convertLocalInputToUTC(submission.reminder_time) ?? '',
+      priority_until: convertLocalInputToUTC(submission.priority_until) ?? null,
+      emergency_expires_at: convertLocalInputToUTC(submission.emergency_expires_at) ?? undefined,
+    };
 
     await onSubmit(submission);
     setFormData(DEFAULT_FORM_STATE);
