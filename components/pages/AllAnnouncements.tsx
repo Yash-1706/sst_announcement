@@ -11,6 +11,9 @@ import { isAnnouncementExpired } from '@/utils/dateUtils'
 import { getCategoryColor, getCategoryIcon } from '@/constants/categoryStyles'
 import { useToast } from '@/hooks/useToast'
 import { ToastContainer } from '../ui/toast'
+import { isVisibleToUser, normalizeUserRole, hasAdminAccess, type UserRole } from '@/utils/announcementUtils'
+import { extractIntakeCodeFromEmail } from '@/utils/studentYear'
+import { parseLinks } from '@/utils/linkParser'
 
 interface AllAnnouncementsProps {
   onBackToDashboard: () => void
@@ -46,10 +49,27 @@ const AllAnnouncements: React.FC<AllAnnouncementsProps> = ({ onBackToDashboard }
 
   const categories = ['all', 'college', 'tech-events', 'sports', 'cultural', 'academic']
 
-  const filteredAnnouncements = announcements.filter(announcement => {
-    if (selectedCategory === 'all') return true
-    return announcement.category === selectedCategory
-  })
+  // Determine user role and intake code for filtering
+  const derivedRole: UserRole = normalizeUserRole(user?.role, user?.is_admin)
+  const isSuperAdmin = derivedRole === 'super_admin'
+  const userIntakeCode = user?.email ? extractIntakeCodeFromEmail(user.email) : null
+
+  // Filter announcements by visibility (intake year targeting) and category
+  const filteredAnnouncements = announcements
+    .filter(announcement => 
+      isVisibleToUser(
+        announcement,
+        derivedRole,
+        user?.is_admin || false,
+        user?.id,
+        isSuperAdmin,
+        userIntakeCode
+      )
+    )
+    .filter(announcement => {
+      if (selectedCategory === 'all') return true
+      return announcement.category === selectedCategory
+    })
 
   return (
     <div className="min-h-screen bg-gray-950">  
@@ -172,7 +192,7 @@ const AllAnnouncements: React.FC<AllAnnouncementsProps> = ({ onBackToDashboard }
                   
                   <CardContent className="relative">
                     <CardDescription className="text-sm text-gray-300 leading-relaxed mb-4 select-text cursor-text">
-                      {announcement.description}
+                      {parseLinks(announcement.description)}
                     </CardDescription>
                     
                     {/* Metadata */}

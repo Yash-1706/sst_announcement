@@ -70,11 +70,14 @@ export async function PATCH(
       is_active: 'isActive',
       status: 'status',
       priority_until: 'priorityUntil',
+      target_years: 'targetYears',
     };
 
     for (const [key, dbField] of Object.entries(allowedFields)) {
       if (body[key] !== undefined) {
-        if (key.endsWith('_date') || key.endsWith('_at') || key.endsWith('_time')) {
+        if (key === 'target_years') {
+          updateData[dbField] = normalizeTargetYears(body[key]);
+        } else if (key.endsWith('_date') || key.endsWith('_at') || key.endsWith('_time')) {
           updateData[dbField] = body[key] ? new Date(body[key]) : null;
         } else {
           updateData[dbField] = body[key];
@@ -109,6 +112,31 @@ export async function PATCH(
       { status: error.status || 500 }
     );
   }
+}
+
+function normalizeTargetYears(value: unknown): number[] | null {
+  if (!value) {
+    return null;
+  }
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const normalized = Array.from(
+    new Set(
+      value
+        .map((entry) => {
+          if (typeof entry === 'string') {
+            const parsed = parseInt(entry, 10);
+            return Number.isNaN(parsed) ? null : parsed;
+          }
+          return typeof entry === 'number' ? entry : null;
+        })
+        .filter((entry): entry is number => entry !== null)
+        .filter((year) => Number.isInteger(year) && year >= 1 && year <= 6)
+    )
+  ).sort((a, b) => a - b);
+
+  return normalized.length > 0 ? normalized : null;
 }
 
 export async function DELETE(

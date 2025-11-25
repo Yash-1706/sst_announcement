@@ -9,6 +9,8 @@ export interface AuthenticatedUser {
   created_at?: Date | string | null;
   last_login?: Date | string | null;
   is_admin?: boolean;
+  intake_year?: number | null;
+  year_level?: number | null;
 }
 
 export interface ApiSuccessResponse<T> {

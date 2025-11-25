@@ -22,6 +22,7 @@ export interface Announcement {
   emergency_expires_at?: string | null
   visible_after?: string | null
   priority_level?: number 
+  target_years?: number[] | null
 }
 
 export interface User {
@@ -31,6 +32,8 @@ export interface User {
   username?: string
   role?: 'student' | 'student_admin' | 'admin' | 'super_admin'
   is_admin?: boolean
+  intake_year?: number | null
+  year_level?: number | null
   created_at?: string
   last_login?: string
 }
@@ -50,6 +53,7 @@ export interface CreateAnnouncementData {
   is_emergency?: boolean
   emergency_expires_at?: string 
   priority_level?: number 
+  target_years?: number[] | null
 }
 
 export interface ReviewAction {
@@ -67,6 +71,7 @@ export interface UpdateAnnouncementData {
   status?: string
   priority_until?: string | null
   priority_level?: number 
+  target_years?: number[] | null
 }
 
 export interface ApiResponse<T> {

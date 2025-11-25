@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { applyRateLimit, generalLimiterOptions, adminLimiterOptions } from '@/lib/middleware/rateLimit';
 import { fetchAllAnnouncements, mapAnnouncement } from '@/lib/data/announcements';
-import { requireAuth, requireAdmin } from '@/lib/middleware/auth';
+import { requireAuth, requireAdmin, getUserFromRequest } from '@/lib/middleware/auth';
 import { requireAllowedDomain } from '@/lib/middleware/domain';
 import { validateAnnouncement } from '@/lib/utils/validation';
 import { BadRequestError, formatErrorResponse } from '@/lib/utils/errors';
 import { getDb, getPool } from '@/lib/config/db';
-import { announcements } from '@/lib/schema';
+import { announcements, users } from '@/lib/schema';
 import { sendAnnouncementEmail } from '@/lib/services/email';
 import { eq, sql } from 'drizzle-orm';
-import { normalizeUserRole } from '@/lib/utils/roleUtils';
+import { normalizeUserRole, hasAdminAccess } from '@/lib/utils/roleUtils';
 import { getAnnouncementPriority } from '@/utils/announcementUtils';
 import type { UserRole } from '@/utils/announcementUtils';
+import { getYearMetadataFromEmail, extractIntakeCodeFromEmail } from '@/utils/studentYear';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,8 +29,25 @@ export async function GET(request: NextRequest) {
       limit: validLimit, 
       offset: validOffset 
     });
+    const currentUser = await getUserFromRequest(request);
+    const normalizedRole = normalizeUserRole(currentUser?.role, currentUser?.is_admin);
+    const canViewAll = hasAdminAccess(normalizedRole) || normalizedRole === 'super_admin';
+    const userIntakeCode = currentUser ? extractIntakeCodeFromEmail(currentUser.email) : null;
 
-    return NextResponse.json({ success: true, data });
+    const filteredData = canViewAll
+      ? data
+      : data.filter(announcement => {
+          const targets = Array.isArray(announcement.target_years) ? announcement.target_years : null;
+          if (!targets || targets.length === 0) {
+            return true;
+          }
+          if (!userIntakeCode) {
+            return false;
+          }
+          return targets.includes(userIntakeCode); // Match by intake code (23, 24, 25, etc.)
+        });
+
+    return NextResponse.json({ success: true, data: filteredData });
 
   } catch (error: any) {
     console.error('[GET] /api/announcements error:', error);
@@ -67,10 +85,12 @@ export async function POST(request: NextRequest) {
       status = 'active',
       send_email = false,
       send_tv = false,
+      target_years = null,
     } = body;
 
     const db = getDb();
     const prioritySupported = await ensurePriorityColumn(db);
+    const targetYearsSupported = await ensureTargetYearsColumn(db);
     const now = new Date();
     const scheduledDateRaw = scheduled_at ? new Date(scheduled_at) : null;
     const priorityUntilRaw = priority_until ? new Date(priority_until) : null;
@@ -106,6 +126,8 @@ export async function POST(request: NextRequest) {
     const finalStatus = hasPriorityWindow ? 'urgent' : isScheduled ? 'scheduled' : status;
     const finalIsActive = isScheduled ? false : hasPriorityWindow ? true : is_active;
     
+    const normalizedTargetYears = normalizeTargetYears(target_years);
+
     const announcementValues: any = {
       title,
       description,
@@ -124,8 +146,14 @@ export async function POST(request: NextRequest) {
     if (prioritySupported) {
       announcementValues.priorityUntil = priorityUntilDate;
     }
+    if (targetYearsSupported) {
+      announcementValues.targetYears = normalizedTargetYears;
+    }
 
-    const record = await insertAnnouncementWithFallback(db, announcementValues, prioritySupported);
+    const record = await insertAnnouncementWithFallback(db, announcementValues, {
+      prioritySupported,
+      targetYearsSupported,
+    });
 
     if (pendingScheduleAdjustments.length > 0) {
       await applyScheduleAdjustments(db, pendingScheduleAdjustments);
@@ -136,8 +164,7 @@ export async function POST(request: NextRequest) {
 
     if (send_email && !isScheduled) {
       try {
-        // Hardcoded email recipient
-        const emails = ['mohammed.24bcs10278@sst.scaler.com'];
+        const emails = await resolveRecipientEmails(normalizedTargetYears);
         if (emails.length > 0) {
           const result = await sendAnnouncementEmail({
             title,
@@ -155,6 +182,8 @@ export async function POST(request: NextRequest) {
               .set({ emailSent: true })
               .where(eq(announcements.id, record.id!));
           }
+        } else {
+          emailMessage = 'No recipients matched the selected years';
         }
       } catch (error) {
         console.error('Error sending announcement email:', error);
@@ -182,6 +211,31 @@ export async function POST(request: NextRequest) {
     const status = error?.statusCode || error?.status || 500;
     return NextResponse.json(formatErrorResponse(error), { status });
   }
+}
+
+function normalizeTargetYears(value: unknown): number[] | null {
+  if (!value) {
+    return null;
+  }
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const normalized = Array.from(
+    new Set(
+      value
+        .map((entry) => {
+          if (typeof entry === 'string') {
+            const parsed = parseInt(entry, 10);
+            return Number.isNaN(parsed) ? null : parsed;
+          }
+          return typeof entry === 'number' ? entry : null;
+        })
+        .filter((entry): entry is number => entry !== null)
+        .filter((year) => Number.isInteger(year) && year >= 1 && year <= 99) // Intake year codes (23, 24, 25, etc.)
+    )
+  ).sort((a, b) => a - b);
+
+  return normalized.length > 0 ? normalized : null;
 }
 
 const SLOT_INTERVAL_MINUTES = 5;
@@ -346,6 +400,8 @@ type PriorityColumnState = 'unknown' | 'supported' | 'unsupported';
 let priorityColumnState: PriorityColumnState = 'unknown';
 let urgentStatusEnsured = false;
 let initializationPromise: Promise<void> | null = null;
+type TargetYearsColumnState = 'unknown' | 'supported' | 'unsupported';
+let targetYearsColumnState: TargetYearsColumnState = 'unknown';
 
 async function initializeSchema(): Promise<void> {
   if (initializationPromise) {
@@ -356,6 +412,7 @@ async function initializeSchema(): Promise<void> {
     const db = getDb();
     await Promise.all([
       ensurePriorityColumn(db),
+      ensureTargetYearsColumn(db),
       ensureUrgentStatusEnum(db)
     ]);
   })();
@@ -445,11 +502,51 @@ async function ensureUrgentStatusEnum(db: ReturnType<typeof getDb>): Promise<voi
   }
 }
 
+async function ensureTargetYearsColumn(db: ReturnType<typeof getDb>): Promise<boolean> {
+  if (targetYearsColumnState === 'supported') return true;
+  if (targetYearsColumnState === 'unsupported') return false;
+
+  try {
+    const checkResult: any = await db.execute(sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'announcements' AND column_name = 'target_years'
+      LIMIT 1
+    `);
+
+    if (checkResult?.rows?.length > 0) {
+      targetYearsColumnState = 'supported';
+      return true;
+    }
+
+    await db.execute(sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_years INTEGER[]`);
+
+    const verifyResult: any = await db.execute(sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'announcements' AND column_name = 'target_years'
+      LIMIT 1
+    `);
+
+    if (verifyResult?.rows?.length > 0) {
+      targetYearsColumnState = 'supported';
+      return true;
+    }
+
+    targetYearsColumnState = 'unsupported';
+    return false;
+  } catch (error) {
+    console.warn('Unable to add/check target_years column; continuing without audience filtering', error);
+    targetYearsColumnState = 'unsupported';
+    return false;
+  }
+}
+
 async function insertAnnouncementWithFallback(
   db: ReturnType<typeof getDb>,
   values: typeof announcements.$inferInsert,
-  prioritySupported: boolean
+  options: { prioritySupported: boolean; targetYearsSupported: boolean }
 ) {
+  const { prioritySupported, targetYearsSupported } = options;
+
   if (prioritySupported) {
     try {
       const [record] = await db.insert(announcements).values(values).returning();
@@ -473,91 +570,41 @@ async function insertAnnouncementWithFallback(
 
   // Priority column not available - use manual insert without that column
   const pool = getPool();
-  
+  const targetYearsValue =
+    targetYearsSupported && Array.isArray(values.targetYears) && values.targetYears.length > 0
+      ? values.targetYears
+      : null;
+
   // Use 'active' instead of 'urgent' if enum doesn't support it
   const insertStatus = values.status === 'urgent' ? 'active' : (values.status ?? 'active');
   const priorityLevel = values.priorityLevel ?? 3;
   
   try {
     const manualInsert = await pool.query({
-      text: `
-        INSERT INTO announcements (
-          title,
-          description,
-          category,
-          author_id,
-          expiry_date,
-          scheduled_at,
-          reminder_time,
-          is_active,
-          status,
-          send_email,
-          email_sent,
-          send_tv,
-          priority_level
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        RETURNING *
-      `,
-      values: [
-        values.title,
-        values.description,
-        values.category,
-        values.authorId,
-        values.expiryDate ?? null,
-        values.scheduledAt ?? null,
-        values.reminderTime ?? null,
-        values.isActive ?? true,
+      text: buildManualInsertStatement(!!targetYearsValue),
+      values: buildManualInsertValues({
+        values,
         insertStatus,
-        values.sendEmail ?? false,
-        values.emailSent ?? false,
-        values.sendTV ?? false,
         priorityLevel,
-      ],
+        targetYearsValue,
+      }),
     });
     
     if (!manualInsert.rows?.length) {
       throw new Error('Failed to insert announcement without priority column');
     }
     
-    // Map snake_case to camelCase to match Drizzle schema format
     return mapRowToAnnouncement(manualInsert.rows[0]);
   } catch (error) {
-    // If still fails with enum error, try with 'active' status
     if (isInvalidEnumError(error) && insertStatus !== 'active') {
       const manualInsert = await pool.query({
-        text: `
-          INSERT INTO announcements (
-            title,
-            description,
-            category,
-            author_id,
-            expiry_date,
-            scheduled_at,
-            reminder_time,
-            is_active,
-            status,
-            send_email,
-            email_sent,
-            send_tv,
-            priority_level
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-          RETURNING *
-        `,
-        values: [
-          values.title,
-          values.description,
-          values.category,
-          values.authorId,
-          values.expiryDate ?? null,
-          values.scheduledAt ?? null,
-          values.reminderTime ?? null,
-          values.isActive ?? true,
-          'active',
-          values.sendEmail ?? false,
-          values.emailSent ?? false,
-          values.sendTV ?? false,
+        text: buildManualInsertStatement(!!targetYearsValue),
+        values: buildManualInsertValues({
+          values,
+          insertStatus: 'active',
           priorityLevel,
-        ],
+          targetYearsValue,
+        }),
       });
       
       if (!manualInsert.rows?.length) {
@@ -589,7 +636,88 @@ function isInvalidEnumError(error: unknown): boolean {
   );
 }
 
+function buildManualInsertStatement(includeTargetYears: boolean): string {
+  const columns = [
+    'title',
+    'description',
+    'category',
+    'author_id',
+    'expiry_date',
+    'scheduled_at',
+    'reminder_time',
+    'is_active',
+    'status',
+    'send_email',
+    'email_sent',
+    'send_tv',
+    'priority_level',
+  ];
+  if (includeTargetYears) {
+    columns.push('target_years');
+  }
+  const placeholders = columns.map((_, idx) => `$${idx + 1}`).join(', ');
+  return `
+        INSERT INTO announcements (${columns.join(', ')})
+        VALUES (${placeholders})
+        RETURNING *
+      `;
+}
+
+function buildManualInsertValues({
+  values,
+  insertStatus,
+  priorityLevel,
+  targetYearsValue,
+}: {
+  values: typeof announcements.$inferInsert;
+  insertStatus: string;
+  priorityLevel: number;
+  targetYearsValue: number[] | null;
+}) {
+  const params: any[] = [
+    values.title,
+    values.description,
+    values.category,
+    values.authorId,
+    values.expiryDate ?? null,
+    values.scheduledAt ?? null,
+    values.reminderTime ?? null,
+    values.isActive ?? true,
+    insertStatus,
+    values.sendEmail ?? false,
+    values.emailSent ?? false,
+    values.sendTV ?? false,
+    priorityLevel,
+  ];
+  if (targetYearsValue) {
+    params.push(targetYearsValue);
+  }
+  return params;
+}
+
+async function resolveRecipientEmails(targetYears: number[] | null): Promise<string[]> {
+  const db = getDb();
+  const rows = await db.select({ email: users.email }).from(users);
+  const normalizedTargets = Array.isArray(targetYears) && targetYears.length > 0 ? targetYears : null;
+
+  return rows
+    .map((row) => row.email)
+    .filter((email): email is string => Boolean(email))
+    .filter((email) => {
+      if (!normalizedTargets) {
+        return true;
+      }
+      const intakeCode = extractIntakeCodeFromEmail(email);
+      if (!intakeCode) {
+        return false;
+      }
+      return normalizedTargets.includes(intakeCode);
+    });
+}
+
 function mapRowToAnnouncement(row: any): typeof announcements.$inferSelect {
+  const targetYears =
+    Array.isArray(row.target_years) && row.target_years.length > 0 ? row.target_years : null;
   return {
     id: row.id,
     title: row.title,
@@ -608,7 +736,8 @@ function mapRowToAnnouncement(row: any): typeof announcements.$inferSelect {
     sendEmail: row.send_email ?? false,
     emailSent: row.email_sent ?? false,
     sendTV: row.send_tv ?? false,
-    priorityUntil: null, // Not supported in manual insert fallback
+    priorityUntil: null,
     priorityLevel: row.priority_level ?? 3,
+    targetYears,
   } as typeof announcements.$inferSelect;
 }

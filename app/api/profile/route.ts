@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/middleware/auth';
 import { applyRateLimit, generalLimiterOptions } from '@/lib/middleware/rateLimit';
 import { normalizeUserRole, hasAdminAccess } from '@/lib/utils/roleUtils';
+import { getYearMetadataFromEmail } from '@/utils/studentYear';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
 
     const user = await requireAuth(request, { enforceDomain: true });
     const role = normalizeUserRole(user.role, user.is_admin);
+    const yearMetadata = getYearMetadataFromEmail(user.email);
 
     return NextResponse.json({
       success: true,
@@ -21,6 +23,8 @@ export async function GET(request: NextRequest) {
         is_admin: user.is_admin ?? hasAdminAccess(role),
         created_at: user.created_at,
         last_login: user.last_login,
+        intake_year: user.intake_year ?? yearMetadata?.intakeYear ?? null,
+        year_level: user.year_level ?? yearMetadata?.yearLevel ?? null,
       },
     });
 

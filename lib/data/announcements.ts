@@ -5,6 +5,8 @@ import { announcements } from '../schema';
 export type AnnouncementRecord = typeof announcements.$inferSelect;
 
 export function mapAnnouncement(record: AnnouncementRecord) {
+  const targetYears =
+    Array.isArray(record.targetYears) && record.targetYears.length > 0 ? record.targetYears : null;
   return {
     id: record.id,
     title: record.title,
@@ -25,6 +27,7 @@ export function mapAnnouncement(record: AnnouncementRecord) {
     send_tv: record.sendTV,
     priority_until: record.priorityUntil,
     priority_level: record.priorityLevel ?? 3,
+    target_years: targetYears,
   };
 }
 

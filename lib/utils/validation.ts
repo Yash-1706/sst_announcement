@@ -79,6 +79,23 @@ export function validateAnnouncement(data: any): ValidationErrorItem[] {
     errors.push({ field: 'status', message: `Status must be one of: ${validStatuses.join(', ')}` });
   }
 
+  if (data.target_years !== undefined && data.target_years !== null) {
+    if (!Array.isArray(data.target_years)) {
+      errors.push({ field: 'target_years', message: 'target_years must be an array of intake year codes' });
+    } else {
+      const hasInvalid = data.target_years.some(
+        (year: unknown) =>
+          typeof year !== 'number' ||
+          !Number.isInteger(year) ||
+          year < 1 ||
+          year > 99
+      );
+      if (hasInvalid) {
+        errors.push({ field: 'target_years', message: 'Intake year codes must be integers between 20 and 99' });
+      }
+    }
+  }
+
   return errors;
 }
 

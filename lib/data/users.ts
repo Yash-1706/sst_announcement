@@ -3,6 +3,7 @@ import { desc } from 'drizzle-orm';
 import { getDb } from '../config/db';
 import { users } from '../schema';
 import type { UserRole } from '../types/index';
+import { getYearMetadataFromEmail } from '@/utils/studentYear';
 
 export async function findOrCreateUser(clerkId: string, email: string, displayName?: string) {
   const db = getDb();
@@ -67,16 +68,24 @@ export async function getAllUsers() {
     .from(users)
     .orderBy(desc(users.createdAt));
 
-  return result.map((user): any => ({
-    id: user.id,
-    clerk_id: user.clerkId,
-    email: user.email,
-    username: user.username,
-    role: (user as any).role || 'student',
-    is_admin: (user as any).role === 'admin' || (user as any).role === 'super_admin' || (user as any).role === 'student_admin',
-    created_at: user.createdAt,
-    last_login: user.lastLogin,
-  }));
+  return result.map((user): any => {
+    const yearMetadata = getYearMetadataFromEmail(user.email);
+    return {
+      id: user.id,
+      clerk_id: user.clerkId,
+      email: user.email,
+      username: user.username,
+      role: (user as any).role || 'student',
+      is_admin:
+        (user as any).role === 'admin' ||
+        (user as any).role === 'super_admin' ||
+        (user as any).role === 'student_admin',
+      created_at: user.createdAt,
+      last_login: user.lastLogin,
+      intake_year: yearMetadata?.intakeYear ?? null,
+      year_level: yearMetadata?.yearLevel ?? null,
+    };
+  });
 }
 
 export async function updateUserAdminStatus(userId: number, isAdmin: boolean) {
@@ -107,6 +116,7 @@ export async function getUserByEmail(email: string) {
 
 export function mapUser(user: typeof users.$inferSelect) {
   const role = (user as any).role || 'user';
+  const yearMetadata = getYearMetadataFromEmail(user.email);
   return {
     id: user.id,
     clerk_id: user.clerkId,
@@ -116,5 +126,7 @@ export function mapUser(user: typeof users.$inferSelect) {
     is_admin: role === 'admin' || role === 'super_admin' || role === 'student_admin',
     created_at: user.createdAt,
     last_login: user.lastLogin,
+    intake_year: yearMetadata?.intakeYear ?? null,
+    year_level: yearMetadata?.yearLevel ?? null,
   };
 }

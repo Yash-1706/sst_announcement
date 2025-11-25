@@ -5,6 +5,7 @@ import type { Announcement, UpdateAnnouncementData } from '../../types';
 import { CATEGORY_OPTIONS } from '../../constants/categories';
 import { formatDateForInput } from '../../utils/dateUtils';
 import { useAppUser } from '../../contexts/AppUserContext';
+import { INTAKE_YEAR_OPTIONS } from '../../utils/studentYear';
 
 interface EditAnnouncementModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ const EditAnnouncementModal: React.FC<EditAnnouncementModalProps> = ({
     reminder_time: '',
     is_active: true,
     status: isSuperAdmin ? 'active' : 'under_review',
+    target_years: null,
   });
 
   useEffect(() => {
@@ -45,6 +47,7 @@ const EditAnnouncementModal: React.FC<EditAnnouncementModalProps> = ({
         reminder_time: formatDateForInput(announcement.reminder_time),
         is_active: announcement.is_active ?? true,
         status: isSuperAdmin ? (announcement.status || 'active') : 'under_review',
+        target_years: announcement.target_years ?? null,
       });
     }
   }, [announcement, isSuperAdmin]);
@@ -66,6 +69,18 @@ const EditAnnouncementModal: React.FC<EditAnnouncementModalProps> = ({
     }
     await onSubmit(announcement.id!, submissionData);
   };
+
+  const toggleYearSelection = (year: number) => {
+    setFormData(prev => {
+      const current = prev.target_years ?? [];
+      const exists = current.includes(year);
+      const next = exists ? current.filter(y => y !== year) : [...current, year];
+      next.sort((a, b) => a - b);
+      return { ...prev, target_years: next.length ? next : null };
+    });
+  };
+
+  const isAllYears = !formData.target_years || formData.target_years.length === 0;
 
   return (
     <div 
@@ -129,6 +144,45 @@ const EditAnnouncementModal: React.FC<EditAnnouncementModalProps> = ({
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Visible to Intake Years</label>
+            <p className="text-xs text-gray-500 mb-2">Restrict announcement visibility by intake year.</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, target_years: null }))}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  isAllYears
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40'
+                    : 'bg-blue-900/40 text-blue-200 hover:bg-blue-800/40'
+                }`}
+              >
+                All years
+              </button>
+              {INTAKE_YEAR_OPTIONS.map((intakeYear) => {
+                const isSelected = formData.target_years?.includes(intakeYear);
+                return (
+                  <button
+                    key={intakeYear}
+                    type="button"
+                    onClick={() => toggleYearSelection(intakeYear)}
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                      isSelected
+                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/40'
+                        : 'bg-purple-900/40 text-purple-200 hover:bg-purple-800/40'
+                    }`}
+                  >
+                    {intakeYear}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              {isAllYears
+                ? 'Visible to all students.'
+                : `Currently visible to Intake ${formData.target_years?.join(', ')}`}
+            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>

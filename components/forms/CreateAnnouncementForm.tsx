@@ -23,7 +23,8 @@ const CreateAnnouncementForm: React.FC<CreateAnnouncementFormProps> = ({ onClose
     is_active: true,
     status: 'active',
     send_email: false,
-    is_emergency: false
+    is_emergency: false,
+    target_years: null
   })
 
   const categories = [

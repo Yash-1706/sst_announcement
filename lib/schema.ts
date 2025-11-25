@@ -46,6 +46,7 @@ export const announcements = pgTable('announcements', {
   emergencyExpiresAt: timestamp('emergency_expires_at', { withTimezone: true }),
   visibleAfter: timestamp('visible_after', { withTimezone: true }),
   priorityLevel: integer('priority_level').default(3).notNull(), // P0=0, P1=1, P2=2, P3=3
+  targetYears: integer('target_years').array(),
 });
 
 export const announcementEngagements = pgTable('announcement_engagements', {

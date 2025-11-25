@@ -31,6 +31,8 @@ import { ToastContainer } from '../ui/toast';
 import { useToast } from '@/hooks/useToast';
 import '@/styles/Dashboard.css';
 import { useClerk } from '@clerk/nextjs';
+import { extractIntakeCodeFromEmail } from '@/utils/studentYear';
+import { parseLinks } from '@/utils/linkParser';
 
 interface DashboardProps {
   onViewAllAnnouncements: () => void;
@@ -73,13 +75,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewAllAnnouncements }) => {
   
   
   // Filter and prioritize announcements based on user role
+  const userIntakeCode = user?.email ? extractIntakeCodeFromEmail(user.email) : null;
   const visibleAnnouncements = announcements.filter(a => 
     isVisibleToUser(
       a, 
       derivedRole,
       user?.is_admin || false, 
       user?.id, 
-      user?.role === 'super_admin'
+      user?.role === 'super_admin',
+      userIntakeCode
     )
   );
 
@@ -671,7 +675,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewAllAnnouncements }) => {
                                 )}
                                 {expandedId === a.id && (
                                   <div className="text-sm text-gray-300 leading-relaxed animate-in fade-in slide-in-from-top duration-300">
-                                    {a.description}
+                                    {parseLinks(a.description)}
                                   </div>
                                 )}
                               </div>

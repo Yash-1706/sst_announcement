@@ -69,7 +69,8 @@ export const isVisibleToUser = (
   userRole: UserRole = 'student',
   isAdmin?: boolean, 
   userId?: number, 
-  isSuperAdmin?: boolean
+  isSuperAdmin?: boolean,
+  studentIntakeCode?: number | null
 ): boolean => {
   const hasAdminLevel = hasAdminAccess(userRole)
   const now = new Date()
@@ -89,17 +90,14 @@ export const isVisibleToUser = (
         return false
       }
     }
+
+    const targetYears = Array.isArray(announcement.target_years) ? announcement.target_years : null
+    if (targetYears && targetYears.length > 0) {
+      if (!studentIntakeCode || !targetYears.includes(studentIntakeCode)) {
+        return false
+      }
+    }
   }
-  
-  if (hasAdminLevel) return true
-  
-  if (announcement.status === 'under_review') return false
-  
-  if (announcement.status === 'rejected') return false
-  
-  if (announcement.is_active === false) return false
-  
-  if (isAnnouncementExpired(announcement)) return false
   
   return true
 }

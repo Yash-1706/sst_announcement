@@ -24,7 +24,8 @@ const EmergencyAlertForm: React.FC<EmergencyAlertFormProps> = ({ onClose, onSucc
     send_email: true,
     send_tv: true,
     is_emergency: true,
-    emergency_expires_at: ''
+    emergency_expires_at: '',
+    target_years: null
   })
 
   const handleInputChange = (field: keyof CreateAnnouncementData, value: any) => {

@@ -6,6 +6,7 @@ import { useAppUser } from '../../contexts/AppUserContext';
 import { getPriorityForCategory, priorityToNumber, numberToPriority, getPriorityDisplayName, getPriorityExamples } from '../../utils/priorityMapping';
 import { getMaxPriorityForRole, getMaxPriorityNumberForRole, canSetPriorityLevel, normalizeUserRole, hasAdminAccess } from '../../utils/announcementUtils';
 import { formatDateTime } from '../../utils/dateUtils';
+ import { INTAKE_YEAR_OPTIONS } from '../../utils/studentYear';
 
 const DEFAULT_FORM_STATE: CreateAnnouncementData = {
   title: '',
@@ -21,6 +22,7 @@ const DEFAULT_FORM_STATE: CreateAnnouncementData = {
   priority_until: null,
   is_emergency: false,
   priority_level: 3, 
+  target_years: null,
 };
 
 const PRIORITY_DURATION_OPTIONS = [1, 2, 4, 6, 12, 24];
@@ -175,6 +177,18 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
     setPriorityDurationHours(2);
     setEmergencyDurationHours(4);
   };
+
+  const toggleYearSelection = (year: number) => {
+    setFormData(prev => {
+      const current = prev.target_years ?? [];
+      const exists = current.includes(year);
+      const next = exists ? current.filter(y => y !== year) : [...current, year];
+      next.sort((a, b) => a - b);
+      return { ...prev, target_years: next.length ? next : null };
+    });
+  };
+
+  const isAllYears = !formData.target_years || formData.target_years.length === 0;
 
   return (
     <div 
@@ -366,6 +380,51 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-300">
+              <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Visible to Intake Years
+            </label>
+            <p className="text-xs text-gray-500">Select specific intake years or keep it visible to all.</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, target_years: null }))}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  isAllYears
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40'
+                    : 'bg-blue-900/40 text-blue-200 hover:bg-blue-800/40'
+                }`}
+              >
+                All years
+              </button>
+              {INTAKE_YEAR_OPTIONS.map((intakeYear) => {
+                const isSelected = formData.target_years?.includes(intakeYear);
+                return (
+                  <button
+                    key={intakeYear}
+                    type="button"
+                    onClick={() => toggleYearSelection(intakeYear)}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                      isSelected
+                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/40'
+                        : 'bg-purple-900/40 text-purple-200 hover:bg-purple-800/40'
+                    }`}
+                  >
+                    {intakeYear}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-400">
+              {isAllYears
+                ? 'Announcement will be visible to all students.'
+                : `Visible to: Intake ${formData.target_years?.join(', ')}`}
+            </p>
           </div>
 
           {!isEmergencyVariant && (
